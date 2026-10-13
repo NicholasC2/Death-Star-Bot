@@ -1,25 +1,12 @@
 import { ButtonBuilder, ButtonStyle, Client, Component, EmbedBuilder, Guild, InteractionType } from "discord.js"
-import { createCommand, getCommands, runCommand } from "./commands.js"
-import { config } from "dotenv"
 import { ActionRowBuilder } from "@discordjs/builders";
+
+import { createCommand, getCommands, runCommand } from "./commands.js"
+
+import { config } from "dotenv"
 config({
     quiet: true
 })
-
-const whitelistUsers = [
-    "704854110511562804", // NicholasC
-    "607796156701081620", // Bean
-    "451379187031343104", // Star Destroyer
-    "1015129512310227027" // Death Star
-]
-
-const whitelistGuilds = [
-    "1062349609374068826", // Death Star Testing
-    "1159755377441787924"  //Null
-]
-
-const informationChannelID = "1062855898961289297"
-let informationChannel
 
 let canceled = false;
 let hyperspaced = false;
