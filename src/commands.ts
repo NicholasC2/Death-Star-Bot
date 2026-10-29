@@ -1,8 +1,16 @@
-import { Message } from "discord.js"
+import type { Message } from "discord.js";
 
 export class CommandRegistry {
-    public readonly static prefix: string = "!";
-    private static commands: Command[] = [];
+    private static prefix: string = "!";
+    private static commands: Command[] = [
+        {
+            name: "help",
+            description: "shows this list",
+            run: ()=>{
+                return this.commands.map(c => `${c.name} - ${c.description}`).join("\n");
+            }
+        }
+    ];
 
     static registerCommand(command: Command) {
         this.commands.push(command);
@@ -35,12 +43,16 @@ export class CommandRegistry {
             throw new SyntaxError("Value must be a non-empty string");
         }
     }
+
+    static getPrefix() {
+        return this.prefix;
+    }
 }
 
 export class Command {
     constructor(
         public name: string,
         public description: string,
-        public run: (...args: string[])=>{}
+        public run: (message?: Message,...args: string[])=>string|Promise<string>
     ) {}
 }
